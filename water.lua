@@ -61,7 +61,9 @@ local function onGetPartsInPart(...)
 end
 
 local function onInteractInvokeServer(...)
-	return oldNameCall(...)
+	local args = { ... }
+	args[2]["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
+	return oldNameCall(unpack(args))
 end
 
 local function onNameCall(...)
