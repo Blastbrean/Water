@@ -60,7 +60,18 @@ local function onGetPartsInPart(...)
 	return ballParts
 end
 
+local function onInteractInvokeServer(...)
+	return oldNameCall(...)
+end
+
 local function onNameCall(...)
+	local args = { ... }
+	local self = args[1]
+
+	if getnamecallmethod() == "InvokeServer" and self.Name == "Interact" then
+		return onInteractInvokeServer(...)
+	end
+
 	if getnamecallmethod() == "GetPartsInPart" then
 		return onGetPartsInPart(...)
 	end
