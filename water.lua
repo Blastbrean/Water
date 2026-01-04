@@ -5,6 +5,8 @@ local Water = {
 	-- Prevent hitting if out of bounds
 	-- If in air and spiking, silent aim down through tilt
 	-- Silent aim towards center
+	-- Fix bug where it does not spike the ball while in air
+	-- Fix 'gizmos' library not drawing with correct color
 	autoGuard = true,
 
 	---@todo: Silent unlocked camera
