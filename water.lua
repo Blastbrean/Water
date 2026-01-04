@@ -1,9 +1,8 @@
 local Water = {
 	hitFromAnywhere = true,
+	instantSpin = true,
 
 	---@todo: Improve this feature...
-	-- If in air and spiking, silent aim down through tilt
-	-- Silent aim towards center
 	-- Fix 'gizmos' library not drawing with correct color
 	autoGuard = true,
 
@@ -31,8 +30,23 @@ while not gameController do
 	task.wait()
 end
 
+local abilityController = nil
+
+while not abilityController do
+	abilityController = Knit.GetController("AbilityController")
+	task.wait()
+end
+
+local abilityService = nil
+
+while not abilityService do
+	abilityService = Knit.GetService("AbilityService")
+	task.wait()
+end
+
 local oldNameCall = nil
 local oldDistanceFromCharacter = nil
+local oldSpin = nil
 
 local waterMaid = Maid.new()
 
@@ -60,13 +74,74 @@ local function onGetPartsInPart(...)
 	return ballParts
 end
 
+local function onSetInteract(data)
+	local map = workspace.FindFirstChild(workspace, "Map")
+	if not map then
+		return
+	end
+
+	local ballNoCollide = map.FindFirstChild(map, "BallNoCollide")
+	if not ballNoCollide then
+		return
+	end
+
+	local boundaries = ballNoCollide.FindFirstChild(ballNoCollide, "Boundaries")
+	if not boundaries then
+		return
+	end
+
+	local localPlayer = players.LocalPlayer
+	local character = localPlayer.Character
+	if not character then
+		return
+	end
+
+	local humanoidRootPart = character.FindFirstChild(character, "HumanoidRootPart")
+	if not humanoidRootPart then
+		return
+	end
+
+	local nearestPart = nil
+	local nearestDistance = nil
+
+	for _, part in next, boundaries.GetChildren(boundaries) do
+		if not part:IsA("BasePart") then
+			continue
+		end
+
+		local distance = (part.Position - humanoidRootPart.Position).Magnitude
+
+		if nearestDistance and distance > nearestDistance then
+			continue
+		end
+
+		nearestPart = part
+		nearestDistance = distance
+	end
+
+	if not nearestPart then
+		return
+	end
+
+	data["LookVector"] = (humanoidRootPart.Position - nearestPart.Position).Unit
+end
+
 local function onInteractInvokeServer(...)
 	local args = { ... }
-	if args[2]["Move"] ~= "Spike" then
+	local data = args[2]
+
+	if not checkcaller() then
 		return oldNameCall(...)
 	end
 
-	args[2]["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
+	if data["Move"] == "Spike" then
+		data["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
+	end
+
+	if data["Move"] == "Set" then
+		onSetInteract(data)
+	end
+
 	return oldNameCall(unpack(args))
 end
 
@@ -83,6 +158,16 @@ local function onNameCall(...)
 	end
 
 	return oldNameCall(...)
+end
+
+local function onSpin(...)
+	local args = { ... }
+
+	if Water.instantSpin then
+		return abilityService:Roll(args[2] or false)
+	end
+
+	return oldSpin(...)
 end
 
 local function onDistanceFromCharacter(...)
@@ -287,6 +372,7 @@ end
 function Water.init()
 	oldNameCall = hookmetamethod(game, "__namecall", onNameCall)
 	oldDistanceFromCharacter = Hooking.func(MockPlayer.DistanceFromCharacter, onDistanceFromCharacter)
+	oldSpin = Hooking.func(abilityController.Spin, onSpin)
 
 	waterMaid:mark(runService.RenderStepped:Connect(onRenderStepped))
 
