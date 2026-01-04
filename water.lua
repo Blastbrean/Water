@@ -62,6 +62,10 @@ end
 
 local function onInteractInvokeServer(...)
 	local args = { ... }
+	if args[2]["Move"] ~= "Spike" then
+		return oldNameCall(...)
+	end
+
 	args[2]["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
 	return oldNameCall(unpack(args))
 end
