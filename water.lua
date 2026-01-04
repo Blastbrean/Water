@@ -202,17 +202,7 @@ local function onRenderStepped()
 		status[#status + 1] = { ["Label"] = "Ball in bounds?", ["Value"] = isBallInBounds and "✓" or "X" }
 
 		local text = string.format("Auto guard status (%s)", hitType)
-		print(
-			isValid,
-			hitType,
-			isOnCorrectSide,
-			isBelowNetTop,
-			isTooFar,
-			isBallInPlay,
-			isLastTouchValid,
-			isNotAerialOnServe,
-			isBallInBounds
-		)
+
 		for _, entry in ipairs(status) do
 			text = text .. "\n" .. string.format("%s: %s", entry.Label, entry.Value)
 		end
