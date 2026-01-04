@@ -4,7 +4,6 @@ local Water = {
 	---@todo: Improve this feature...
 	-- If in air and spiking, silent aim down through tilt
 	-- Silent aim towards center
-	-- Fix bug where it does not spike the ball while in air
 	-- Fix 'gizmos' library not drawing with correct color
 	autoGuard = true,
 
@@ -154,11 +153,16 @@ local function onRenderStepped()
 		local servedByTeam = replicatedStorage:GetAttribute("ServedByTeam")
 
 		local isOnCorrectSide = Physics.isPointOnTeamSide(localPlayer, ballPart.Position, nil)
-		local isBelowNetTop = (ballPart.Position.Y <= net.Position.Y + net.Size.Y) and not shouldIgnoreNetTop
+		local isBelowNetTop = ballPart.Position.Y <= net.Position.Y + net.Size.Y
 		local isTooFar = distanceToBall <= 50
 		local isBallInPlay = replicatedStorage:GetAttribute("IsBallInPlay") == true
 		local isLastTouchValid = lastHitTeam and lastHitTeam ~= localPlayer.Team.Name
 		local isNotAerialOnServe = not (gameController.IsJumping:get() and servedByTeam ~= nil)
+
+		if shouldIgnoreNetTop then
+			isBelowNetTop = true
+		end
+
 		local isValid = isOnCorrectSide
 			and isBelowNetTop
 			and isTooFar
@@ -197,8 +201,18 @@ local function onRenderStepped()
 		status[#status + 1] = { ["Label"] = "Not aerial on serve?", ["Value"] = isNotAerialOnServe and "✓" or "X" }
 		status[#status + 1] = { ["Label"] = "Ball in bounds?", ["Value"] = isBallInBounds and "✓" or "X" }
 
-		local text = "Auto guard status..."
-
+		local text = string.format("Auto guard status (%s)", hitType)
+		print(
+			isValid,
+			hitType,
+			isOnCorrectSide,
+			isBelowNetTop,
+			isTooFar,
+			isBallInPlay,
+			isLastTouchValid,
+			isNotAerialOnServe,
+			isBallInBounds
+		)
 		for _, entry in ipairs(status) do
 			text = text .. "\n" .. string.format("%s: %s", entry.Label, entry.Value)
 		end
