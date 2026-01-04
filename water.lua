@@ -2,7 +2,6 @@ local Water = {
 	hitFromAnywhere = true,
 
 	---@todo: Improve this feature...
-	-- Prevent hitting if out of bounds
 	-- If in air and spiking, silent aim down through tilt
 	-- Silent aim towards center
 	-- Fix bug where it does not spike the ball while in air
