@@ -2,7 +2,6 @@ local Water = {
 	hitFromAnywhere = true,
 
 	---@todo: Improve this feature...
-	-- Prevent hitting if out of bounds
 	-- If in air and spiking, silent aim down through tilt
 	-- Silent aim towards center
 	-- Fix bug where it does not spike the ball while in air
@@ -144,7 +143,7 @@ local function onRenderStepped()
 		overlapParams.FilterDescendantsInstances = { ballPart }
 		overlapParams.FilterType = Enum.RaycastFilterType.Include
 
-		local partsInCourt = workspace:GetPartBoundsInBox(court.CFrame, Vector3.new(50, 50, 100), overlapParams)
+		local partsInCourt = workspace:GetPartBoundsInBox(court.CFrame, Vector3.new(52, 50, 102), overlapParams)
 
 		if #partsInCourt > 0 then
 			isBallInBounds = true
