@@ -114,6 +114,11 @@ local function onRenderStepped()
 		return
 	end
 
+	local court = map:FindFirstChild("Court")
+	if not court then
+		return
+	end
+
 	if not localPlayer.Team then
 		return
 	end
@@ -133,6 +138,22 @@ local function onRenderStepped()
 			shouldIgnoreNetTop = true
 		end
 
+		local ballInBounds = false
+
+		local overlapParams = OverlapParams.new()
+		overlapParams.FilterDescendantsInstances = { court }
+
+		court.Size = Vector3.new(52, 50, 102)
+		court.CanCollide = false
+
+		local instancesInCourt = (workspace:GetPartBoundsInBox(court.CFrame, court.Size, overlapParams)) --looking if ball is in court
+
+		for _, instance in next, instancesInCourt do
+			if instance == ballPart then
+				ballInBounds = true
+			end
+		end
+
 		local lastHitter = replicatedStorage:GetAttribute("LastHitter")
 		local lastHitTeam = replicatedStorage:GetAttribute("LastHitTeam")
 		local servedByTeam = replicatedStorage:GetAttribute("ServedByTeam")
@@ -149,6 +170,7 @@ local function onRenderStepped()
 			and isBallInPlay
 			and isLastTouchValid
 			and isNotAerialOnServe
+			and ballInBounds
 
 		local status = {}
 
