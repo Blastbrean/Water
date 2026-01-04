@@ -138,20 +138,16 @@ local function onRenderStepped()
 			shouldIgnoreNetTop = true
 		end
 
-		local ballInBounds = false
+		local isBallInBounds = false
 
 		local overlapParams = OverlapParams.new()
-		overlapParams.FilterDescendantsInstances = { court }
+		overlapParams.FilterDescendantsInstances = { ballPart }
+		overlapParams.FilterType = Enum.RaycastFilterType.Include
 
-		court.Size = Vector3.new(52, 50, 102)
-		court.CanCollide = false
+		local partsInCourt = workspace:GetPartBoundsInBox(court.CFrame, Vector3.new(50, 50, 100), overlapParams)
 
-		local instancesInCourt = (workspace:GetPartBoundsInBox(court.CFrame, court.Size, overlapParams)) --looking if ball is in court
-
-		for _, instance in next, instancesInCourt do
-			if instance == ballPart then
-				ballInBounds = true
-			end
+		if #partsInCourt > 0 then
+			isBallInBounds = true
 		end
 
 		local lastHitter = replicatedStorage:GetAttribute("LastHitter")
@@ -170,7 +166,7 @@ local function onRenderStepped()
 			and isBallInPlay
 			and isLastTouchValid
 			and isNotAerialOnServe
-			and ballInBounds
+			and isBallInBounds
 
 		local status = {}
 
@@ -200,6 +196,7 @@ local function onRenderStepped()
 		status[#status + 1] = { ["Label"] = "Ball in play?", ["Value"] = isBallInPlay and "✓" or "X" }
 		status[#status + 1] = { ["Label"] = "Valid last touch?", ["Value"] = isLastTouchValid and "✓" or "X" }
 		status[#status + 1] = { ["Label"] = "Not aerial on serve?", ["Value"] = isNotAerialOnServe and "✓" or "X" }
+		status[#status + 1] = { ["Label"] = "Ball in bounds?", ["Value"] = isBallInBounds and "✓" or "X" }
 
 		local text = "Auto guard status..."
 
