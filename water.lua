@@ -127,24 +127,31 @@ local function onSetInteract(data)
 	data["LookVector"] = (humanoidRootPart.Position - nearestPart.Position).Unit
 end
 
-local function onInteractInvokeServer(self, ...)
+local function onInteractInvokeServer(...)
 	local args = { ... }
 	local data = args[2]
 
-	print(self.Name)
-	if self.Name == "Interact" then
-		if not checkcaller() then
-			return oldNameCall(...)
-		end
+	if not checkcaller() then
+		return oldNameCall(...)
+	end
 
-		if data["Move"] == "Spike" then
-			data["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
-		end
+	if data["Move"] == "Spike" then
+		data["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
+	end
 
 	if data["Move"] == "Set" then
 		onSetInteract(data)
 	end
 
+	return oldNameCall(unpack(args))
+end
+
+local function onServeInvokeServer(...)
+	local args = { ... }
+
+	print("onServeInvokeServer called", ...)
+	args[3] = Water.alwaysMaxServePower and 1.0 or args[3]
+	print("modified serve power to", args[3])
 	return oldNameCall(unpack(args))
 end
 
@@ -381,7 +388,7 @@ local function onRenderStepped()
 end
 
 function Water.init()
-	oldNameCall = Hooking.metamethod(game, "__namecall", onNameCall)
+	oldNameCall = hookmetamethod(game, "__namecall", onNameCall)
 	oldDistanceFromCharacter = Hooking.func(MockPlayer.DistanceFromCharacter, onDistanceFromCharacter)
 	oldSpin = Hooking.func(abilityController.Spin, onSpin)
 
