@@ -1,6 +1,7 @@
 local Water = {
 	hitFromAnywhere = true,
 	instantSpin = true,
+	alwaysMaxServePower = true,
 
 	---@todo: Improve this feature...
 	-- Fix 'gizmos' library not drawing with correct color
@@ -145,12 +146,31 @@ local function onInteractInvokeServer(...)
 	return oldNameCall(unpack(args))
 end
 
+local function onServeInvokeServer(...)
+	local args = { ... }
+
+	print("onServeInvokeServer called", ...)
+
+	args[3] = Water.alwaysMaxServePower and 0.0 or args[3]
+	print("modified serve power to", args[3])
+
+	return oldNameCall(unpack(args))
+end
+
 local function onNameCall(...)
 	local args = { ... }
 	local self = args[1]
 
-	if getnamecallmethod() == "InvokeServer" and self.Name == "Interact" then
-		return onInteractInvokeServer(...)
+	if getnamecallmethod() == "InvokeServer" then
+		if self.name == "Interact" then
+			return onInteractInvokeServer(...)
+		end
+
+		if self.Name == "Serve" then
+			return onServeInvokeServer(...)
+		end
+
+		return oldNameCall(...)
 	end
 
 	if getnamecallmethod() == "GetPartsInPart" then
@@ -370,7 +390,7 @@ local function onRenderStepped()
 end
 
 function Water.init()
-	oldNameCall = hookmetamethod(game, "__namecall", onNameCall)
+	oldNameCall = Hooking.metamethod(game, "__namecall", onNameCall)
 	oldDistanceFromCharacter = Hooking.func(MockPlayer.DistanceFromCharacter, onDistanceFromCharacter)
 	oldSpin = Hooking.func(abilityController.Spin, onSpin)
 
