@@ -12,7 +12,7 @@ local gizmosThickness = 1.0
 
 local POINT_SCALE = 1
 
-local classCache = {}
+local processingQueue = false
 
 local function setVisible(queue, state)
 	for _, instance in ipairs(queue) do
@@ -37,30 +37,14 @@ function Gizmos.styleInstance(adornment)
 	adornment.ZIndex = 1
 end
 
-function Gizmos.createInstance(className)
-	local cache = classCache[className] or { Instance.new(className, workspace) }
+function Gizmos.createInstance(identifier, className)
+	local cache = gizmosMaid[identifier] or Instance.new(className, workspace)
 
-	if not cache then
-		classCache[className] = cache
-	end
+	gizmosMaid[identifier] = cache
 
-	local adornment = table.remove(cache)
+	table.insert(gizmosQueue, cache)
 
-	table.insert(gizmosQueue, adornment)
-
-	return gizmosMaid:mark(adornment)
-end
-
-function Gizmos.releaseInstance(instance)
-	local className = instance.ClassName
-	local cache = classCache[className]
-
-	if not cache then
-		classCache[className] = {}
-		cache = classCache[className]
-	end
-
-	table.insert(cache, instance)
+	return cache
 end
 
 function Gizmos.setColor3(color3)
@@ -75,8 +59,8 @@ function Gizmos.setThickness(value)
 	gizmosThickness = value
 end
 
-function Gizmos.drawPoint(position)
-	local adornment = Gizmos.createInstance("SphereHandleAdornment")
+function Gizmos.drawPoint(identifier, position)
+	local adornment = Gizmos.createInstance(identifier .. "DP_SphereHandleAdornment", "SphereHandleAdornment")
 
 	Gizmos.styleInstance(adornment)
 
@@ -84,8 +68,8 @@ function Gizmos.drawPoint(position)
 	adornment.CFrame = CFrame.new(gizmosPosition + (position or Vector3.zero))
 end
 
-function Gizmos.drawText(text)
-	local billboard = Gizmos.createInstance("BillboardGui")
+function Gizmos.drawText(identifier, text)
+	local billboard = Gizmos.createInstance(identifier .. "DT_BillboardGui", "BillboardGui")
 	billboard.Adornee = workspace.Terrain
 	billboard.AlwaysOnTop = true
 	billboard.StudsOffsetWorldSpace = gizmosPosition
@@ -94,7 +78,7 @@ function Gizmos.drawText(text)
 	billboard.LightInfluence = 0
 	billboard.Name = "GizmosBillboardGui"
 
-	local label = Gizmos.createInstance("TextLabel")
+	local label = Gizmos.createInstance(identifier .. "DT_TextLabel", "TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.RobotoMono
@@ -108,19 +92,23 @@ function Gizmos.drawText(text)
 end
 
 function Gizmos.render()
+	if processingQueue then
+		return
+	end
+
 	local oldQueue = gizmosQueue
 
 	gizmosQueue = {}
 
 	setVisible(oldQueue, true)
 
+	processingQueue = true
+
 	runService.RenderStepped:Wait()
 
-	setVisible(oldQueue, false)
+	processingQueue = false
 
-	for _, instance in ipairs(oldQueue) do
-		Gizmos.releaseInstance(instance)
-	end
+	setVisible(oldQueue, false)
 end
 
 return Gizmos

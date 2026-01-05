@@ -2,11 +2,7 @@ local Water = {
 	hitFromAnywhere = true,
 	instantSpin = true,
 	alwaysMaxServePower = true,
-
-	---@todo: Improve this feature...
-	-- Fix 'gizmos' library not drawing with correct color
 	autoGuard = true,
-
 	---@todo: Silent unlocked camera
 }
 
@@ -23,6 +19,7 @@ local Gizmos = require("utility/gizmos")
 local Physics = require(replicatedStorage:WaitForChild("Common"):WaitForChild("Physics"))
 local Knit = require(replicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))
 local MockPlayer = require(replicatedStorage:WaitForChild("Tools"):WaitForChild("CharBot"):WaitForChild("MockPlayer"))
+local GameMode = require(replicatedStorage:WaitForChild("Configuration"):WaitForChild("Gamemode"))
 
 local gameController = nil
 
@@ -236,7 +233,9 @@ local function onRenderStepped()
 		return
 	end
 
-	if not localPlayer.Team then
+	local isInTraining = GameMode.Current() == GameMode.Types.Training
+
+	if not isInTraining and not localPlayer.Team then
 		return
 	end
 
@@ -246,8 +245,8 @@ local function onRenderStepped()
 			continue
 		end
 
-		local distanceToBall = (humanoidRootPart.Position - ballPart.Position).Magnitude
-		local hitType = distanceToBall <= 20 and "Set" or "Dive"
+		local xzDistanceToBall = ((humanoidRootPart.Position - ballPart.Position) * Vector3.new(1, 0, 1)).Magnitude
+		local hitType = xzDistanceToBall <= 10 and "Set" or "Dive"
 		local shouldIgnoreNetTop = false
 
 		if gameController.IsJumping:get() then
@@ -273,7 +272,7 @@ local function onRenderStepped()
 
 		local isOnCorrectSide = Physics.isPointOnTeamSide(localPlayer, ballPart.Position, nil)
 		local isBelowNetTop = ballPart.Position.Y <= net.Position.Y + net.Size.Y
-		local isTooFar = distanceToBall <= 50
+		local isTooFar = xzDistanceToBall <= 50
 		local isBallInPlay = replicatedStorage:GetAttribute("IsBallInPlay") == true
 		local isLastTouchValid = lastHitTeam and lastHitTeam ~= localPlayer.Team.Name
 		local isNotAerialOnServe = not (gameController.IsJumping:get() and servedByTeam ~= nil)
@@ -290,6 +289,10 @@ local function onRenderStepped()
 			and isNotAerialOnServe
 			and isBallInBounds
 
+		if isInTraining then
+			isValid = false
+		end
+
 		local status = {}
 
 		local lastHitTimestamp = replicatedStorage:GetAttribute("LastHitTimestamp") or 0.0
@@ -298,7 +301,7 @@ local function onRenderStepped()
 		local servesInRow = replicatedStorage:GetAttribute("ServesInRow") or 0
 
 		status[#status + 1] =
-			{ ["Label"] = "Distance to ball", ["Value"] = string.format("%.2f studs", distanceToBall) }
+			{ ["Label"] = "(XZ) Distance to ball", ["Value"] = string.format("%.2f studs", xzDistanceToBall) }
 
 		status[#status + 1] = {
 			["Label"] = "Last team touch",
@@ -328,12 +331,12 @@ local function onRenderStepped()
 
 		Gizmos.setPosition(ballPart.Position + Vector3.new(0, 5, 0))
 		Gizmos.setColor3(isValid and Color3.new(0.0, 1.0, 0.0) or Color3.new(1.0, 0.0, 0.0))
-		Gizmos.drawText(text)
+		Gizmos.drawText("AG_STATUS", text)
 
 		if lastHitPosition then
 			Gizmos.setPosition(lastHitPosition)
 			Gizmos.setColor3(Color3.new(1.0, 0.0, 1.0))
-			Gizmos.drawPoint()
+			Gizmos.drawPoint("LAST_HIT_POSITION")
 			Gizmos.setPosition(lastHitPosition + Vector3.new(0, 5, 0))
 
 			local info = {}
@@ -362,7 +365,7 @@ local function onRenderStepped()
 				infoText = infoText .. "\n" .. string.format("%s: %s", entry.Label, entry.Value)
 			end
 
-			Gizmos.drawText(infoText)
+			Gizmos.drawText("LAST_HIT_INFO", infoText)
 		end
 
 		if not isValid then
@@ -381,7 +384,7 @@ local function onRenderStepped()
 		end
 
 		if hitType == "Dive" then
-			gameController:Dive({ Target = (ballPart.Position - humanoidRootPart.Position).Unit })
+			gameController:Dive({ Target = (ballPart.Position - humanoidRootPart.Position) })
 		end
 	end
 end
@@ -391,9 +394,10 @@ function Water.init()
 	oldDistanceFromCharacter = Hooking.func(MockPlayer.DistanceFromCharacter, onDistanceFromCharacter)
 	oldSpin = Hooking.func(abilityController.Spin, onSpin)
 
-	waterMaid:mark(runService.RenderStepped:Connect(onRenderStepped))
-
+	-- This must run before anything for creation calls to be processed properly.
 	Gizmos.init()
+
+	waterMaid:mark(runService.RenderStepped:Connect(onRenderStepped))
 
 	Logger.warn("Water has initialized.")
 end
