@@ -126,31 +126,38 @@ local function onSetInteract(data)
 	data["LookVector"] = (humanoidRootPart.Position - nearestPart.Position).Unit
 end
 
-local function onInteractInvokeServer(...)
+local function onInteractInvokeServer(self, ...)
 	local args = { ... }
 	local data = args[2]
 
-	if not checkcaller() then
-		return oldNameCall(...)
-	end
+	print(self.Name)
+	if self.Name == "Interact" then
+		if not checkcaller() then
+			return oldNameCall(...)
+		end
 
-	if data["Move"] == "Spike" then
-		data["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
-	end
+		if data["Move"] == "Spike" then
+			data["TiltDirection"] = Vector3.new(0.0, 1.0, 1.0)
+		end
 
-	if data["Move"] == "Set" then
-		onSetInteract(data)
-	end
+		if data["Move"] == "Set" then
+			onSetInteract(data)
+		end
+		return oldNameCall(unpack(args))
+	elseif self.Name == "Serve" then
+		args = { ... }
+		args[3] = 1.0
 
-	return oldNameCall(unpack(args))
+		return oldNameCall(unpack(args))
+	end
 end
 
 local function onNameCall(...)
 	local args = { ... }
 	local self = args[1]
 
-	if getnamecallmethod() == "InvokeServer" and self.Name == "Interact" then
-		return onInteractInvokeServer(...)
+	if getnamecallmethod() == "InvokeServer" and (self.Name == "Interact" or self.Name == "Serve") then
+		return onInteractInvokeServer(self, ...)
 	end
 
 	if getnamecallmethod() == "GetPartsInPart" then
