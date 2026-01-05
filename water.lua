@@ -149,9 +149,8 @@ end
 local function onServeInvokeServer(...)
 	local args = { ... }
 
-	print("onServeInvokeServer called", ...)
 	args[3] = Water.alwaysMaxServePower and 1.0 or args[3]
-	print("modified serve power to", args[3])
+
 	return oldNameCall(unpack(args))
 end
 
