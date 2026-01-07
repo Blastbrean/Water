@@ -13,6 +13,7 @@ local gizmosThickness = 1.0
 local POINT_SCALE = 1
 
 local processingQueue = false
+local gizmosCounter = 0
 
 local function setVisible(queue, state)
 	for _, instance in ipairs(queue) do
@@ -37,7 +38,11 @@ function Gizmos.styleInstance(adornment)
 	adornment.ZIndex = 1
 end
 
-function Gizmos.createInstance(identifier, className)
+function Gizmos.createInstance(className)
+	gizmosCounter = gizmosCounter + 1
+
+	local identifier = className .. "_" .. gizmosCounter
+
 	local cache = gizmosMaid[identifier] or Instance.new(className, workspace)
 
 	gizmosMaid[identifier] = cache
@@ -59,8 +64,8 @@ function Gizmos.setThickness(value)
 	gizmosThickness = value
 end
 
-function Gizmos.drawPoint(identifier, position)
-	local adornment = Gizmos.createInstance(identifier .. "DP_SphereHandleAdornment", "SphereHandleAdornment")
+function Gizmos.drawPoint(position)
+	local adornment = Gizmos.createInstance("SphereHandleAdornment")
 
 	Gizmos.styleInstance(adornment)
 
@@ -68,8 +73,35 @@ function Gizmos.drawPoint(identifier, position)
 	adornment.CFrame = CFrame.new(gizmosPosition + (position or Vector3.zero))
 end
 
-function Gizmos.drawText(identifier, text)
-	local billboard = Gizmos.createInstance(identifier .. "DT_BillboardGui", "BillboardGui")
+function Gizmos.drawArrow(from, to)
+	local coneHeight = gizmosThickness * POINT_SCALE
+	local distance = math.abs((to - from).Magnitude - coneHeight)
+	local orientation = CFrame.lookAt(from, to)
+
+	local adornmentLine = Gizmos.createInstance("CylinderHandleAdornment")
+
+	Gizmos.styleInstance(adornmentLine)
+
+	adornmentLine.Radius = gizmosThickness * 0.5
+	adornmentLine.InnerRadius = 0
+	adornmentLine.Height = distance
+	adornmentLine.CFrame = orientation * CFrame.new(0, 0, -distance * 0.5)
+
+	local adornmentCone = Gizmos.createInstance("ConeHandleAdornment")
+
+	Gizmos.styleInstance(adornmentCone)
+
+	adornmentCone.Height = coneHeight
+	adornmentCone.Radius = coneHeight * 0.5
+	adornmentCone.CFrame = orientation * CFrame.new(0, 0, -distance)
+end
+
+function Gizmos.drawRay(from, direction)
+	Gizmos.drawArrow(from, from + direction)
+end
+
+function Gizmos.drawText(text)
+	local billboard = Gizmos.createInstance("BillboardGui")
 	billboard.Adornee = workspace.Terrain
 	billboard.AlwaysOnTop = true
 	billboard.StudsOffsetWorldSpace = gizmosPosition
@@ -78,7 +110,7 @@ function Gizmos.drawText(identifier, text)
 	billboard.LightInfluence = 0
 	billboard.Name = "GizmosBillboardGui"
 
-	local label = Gizmos.createInstance(identifier .. "DT_TextLabel", "TextLabel")
+	local label = Gizmos.createInstance("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.RobotoMono
@@ -99,6 +131,7 @@ function Gizmos.render()
 	local oldQueue = gizmosQueue
 
 	gizmosQueue = {}
+	gizmosCounter = 0
 
 	setVisible(oldQueue, true)
 
