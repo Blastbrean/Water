@@ -1,4 +1,4 @@
-local AutoGuard = {}
+local AutoGuard = { wantedDiveDirection = Vector3.zero }
 
 local players = game:GetService("Players")
 local collectionService = game:GetService("CollectionService")
@@ -8,6 +8,7 @@ local runService = game:GetService("RunService")
 local Maid = require("utility/maid")
 local Gizmos = require("utility/gizmos")
 local Sheet = require("utility/sheet")
+local BallNetworking = require("utility/ball_networking")
 
 local GameMode = require(replicatedStorage:WaitForChild("Configuration"):WaitForChild("Gamemode"))
 local Game = require(replicatedStorage:WaitForChild("Configuration"):WaitForChild("Game"))
@@ -21,11 +22,7 @@ while not gameController do
 	task.wait()
 end
 
-local zapFolder = replicatedStorage:WaitForChild("ZAP")
-local ballZapReliable = zapFolder:WaitForChild("BALL_ZAP_RELIABLE")
-
 local autoGuardMaid = Maid.new()
-local networkedBallData = nil
 
 local ballHistory = {}
 local BALL_HISTORY_MAX_POINTS = 500
@@ -178,6 +175,10 @@ function AutoGuard.render(context, state)
 	local statusSheet = Sheet.new()
 
 	statusSheet:append("Ball speed", string.format("%.2f studs/s", ballVelocity.Magnitude))
+	statusSheet:append(
+		"Ball distance",
+		string.format("%.2f studs", (ballPosition - context.humanoidRootPart.Position).Magnitude)
+	)
 
 	for _, check in next, state.checks do
 		statusSheet:append(check.label, check.value)
@@ -240,50 +241,18 @@ function AutoGuard.render(context, state)
 		Gizmos.setThickness(0.5)
 		Gizmos.drawPoint()
 	end
-end
 
-local function onBallReplication(dataBuffer)
-	local readerPosition = 0
+	local nearestBoundaryPart = context.nearestBoundaryPart
+	local humanoidRootPart = context.humanoidRootPart
 
-	local function zapRead(numBytes)
-		local pos = readerPosition
-		readerPosition = readerPosition + numBytes
-		return pos
+	if nearestBoundaryPart then
+		local snappedPosition =
+			Vector3.new(nearestBoundaryPart.Position.X, humanoidRootPart.Position.Y, nearestBoundaryPart.Position.Z)
+
+		Gizmos.setPosition(nearestBoundaryPart.Position)
+		Gizmos.setColor3(Color3.new(1, 1, 0))
+		Gizmos.drawRay(humanoidRootPart.Position, (snappedPosition - humanoidRootPart.Position).Unit)
 	end
-
-	local id = buffer.readu8(dataBuffer, zapRead(1))
-
-	if id ~= 1 then
-		error("unknown event id")
-	end
-
-	local x = buffer.readf32(dataBuffer, zapRead(4))
-	local y = buffer.readf32(dataBuffer, zapRead(4))
-	local z = buffer.readf32(dataBuffer, zapRead(4))
-	local vector = Vector3.new(x, y, z)
-
-	local axisX = buffer.readf32(dataBuffer, zapRead(4))
-	local axisY = buffer.readf32(dataBuffer, zapRead(4))
-	local axisZ = buffer.readf32(dataBuffer, zapRead(4))
-	local axisVector = Vector3.new(axisX, axisY, axisZ)
-
-	local cframe = nil
-
-	if axisVector.Magnitude ~= 0 then
-		cframe = CFrame.fromAxisAngle(axisVector, axisVector.Magnitude) + vector
-	else
-		cframe = CFrame.new(vector)
-	end
-
-	local velocityX = buffer.readf32(dataBuffer, zapRead(4))
-	local velocityY = buffer.readf32(dataBuffer, zapRead(4))
-	local velocityZ = buffer.readf32(dataBuffer, zapRead(4))
-	local velocityVector = Vector3.new(velocityX, velocityY, velocityZ)
-
-	networkedBallData = {
-		cframe = cframe,
-		velocity = velocityVector,
-	}
 end
 
 function AutoGuard.update()
@@ -349,9 +318,20 @@ function AutoGuard.update()
 		return
 	end
 
+	local ballNoCollide = map:FindFirstChild("BallNoCollide")
+	if not ballNoCollide then
+		return
+	end
+
+	local boundaries = ballNoCollide:FindFirstChild("Boundaries")
+	if not boundaries then
+		return
+	end
+
 	ballHistory = savedBallHistory
 	predictedLandingHistory = savedPredictedLandingHistory
 
+	local networkedBallData = BallNetworking.networkedBallData
 	local context = {
 		localPlayer = localPlayer,
 		character = character,
@@ -361,9 +341,11 @@ function AutoGuard.update()
 		ballPart = firstBallPart,
 		ballCFrame = networkedBallData and networkedBallData.cframe or firstBallPart.CFrame,
 		ballVelocity = networkedBallData and networkedBallData.velocity or Vector3.zero,
-		gravityMultiplier = firstBall:GetAttribute("GravityMultiplier") or 1,
-		acceleration = firstBall:GetAttribute("Acceleration") or Vector3.zero,
-		jerk = firstBall:GetAttribute("Jerk") or Vector3.zero,
+		---@todo: technically networked, go get it?
+		gravityMultiplier = 1.0,
+		---@note: this is not networked.
+		acceleration = Vector3.zero,
+		jerk = Vector3.zero,
 		map = map,
 		court = court,
 		net = net,
@@ -379,6 +361,26 @@ function AutoGuard.update()
 		lastHitType = replicatedStorage:GetAttribute("LastHitType"),
 		isBallInPlay = replicatedStorage:GetAttribute("IsBallInPlay"),
 	}
+
+	local nearestBoundaryPart = nil
+	local nearestBoundaryDistance = nil
+
+	for _, part in next, boundaries:GetChildren() do
+		if not part:IsA("BasePart") then
+			continue
+		end
+
+		local distance = (part.Position - humanoidRootPart.Position).Magnitude
+
+		if nearestBoundaryDistance and distance > nearestBoundaryDistance then
+			continue
+		end
+
+		nearestBoundaryPart = part
+		nearestBoundaryDistance = distance
+	end
+
+	context.nearestBoundaryPart = nearestBoundaryPart
 
 	local predictedLandingData = predictBallLanding(context)
 
@@ -423,7 +425,7 @@ function AutoGuard.update()
 	state.isValid = isStateValid(state)
 	state.hitType = determineHitType(context, state)
 
-	if shared.water.debugging then
+	if shared.water.autoGuardDebugging then
 		AutoGuard.render(context, state)
 	end
 
@@ -437,6 +439,8 @@ function AutoGuard.update()
 	if shared.water.autoGuardTeleporting then
 		humanoidRootPart.CFrame = CFrame.new(predictedLandingData.position + Vector3.new(0, 5, 0))
 	end
+
+	AutoGuard.wantedDiveDirection = (predictedLandingData.position - humanoidRootPart.Position).Unit
 
 	if state.hitType == "Set" then
 		gameController:DoMove("Set")
@@ -452,7 +456,6 @@ function AutoGuard.init()
 		return
 	end
 
-	autoGuardMaid:mark(ballZapReliable.OnClientEvent:Connect(onBallReplication))
 	autoGuardMaid:mark(runService.RenderStepped:Connect(AutoGuard.update))
 end
 

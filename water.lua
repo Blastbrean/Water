@@ -2,10 +2,12 @@ local Water = {
 	hitFromAnywhere = true,
 	instantSpin = true,
 	alwaysMaxServePower = true,
+	silentUnlockedCamera = true,
+
 	autoGuard = true,
+	autoGuardDebugging = true,
 	autoGuardTeleporting = false,
-	debugging = true,
-	---@todo: Silent unlocked camera
+	autoGuardRedirectTowardsCenter = true,
 }
 
 local collectionService = game:GetService("CollectionService")
@@ -16,6 +18,8 @@ local Logger = require("utility/logger")
 local Maid = require("utility/maid")
 local Hooking = require("utility/hooking")
 local Gizmos = require("utility/gizmos")
+local BallNetworking = require("utility/ball_networking")
+
 local AutoGuard = require("auto_guard")
 
 local Knit = require(replicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))
@@ -78,6 +82,14 @@ local function onGetPartsInPart(...)
 end
 
 local function onSetInteract(data)
+	if not Water.autoGuardRedirectTowardsCenter then
+		return
+	end
+
+	if not checkcaller() then
+		return
+	end
+
 	local map = workspace.FindFirstChild(workspace, "Map")
 	if not map then
 		return
@@ -126,15 +138,17 @@ local function onSetInteract(data)
 		return
 	end
 
-	data["LookVector"] = (humanoidRootPart.Position - nearestPart.Position).Unit
+	local snappedPosition = Vector3.new(nearestPart.Position.X, humanoidRootPart.Position.Y, nearestPart.Position.Z)
+
+	data["LookVector"] = (snappedPosition - humanoidRootPart.Position).Unit
 end
 
 local function onInteractInvokeServer(...)
 	local args = { ... }
 	local data = args[2]
 
-	if not checkcaller() then
-		return oldNameCall(...)
+	if Water.silentUnlockedCamera then
+		data["LookVector"] = workspace.CurrentCamera.CFrame.LookVector
 	end
 
 	if data["Move"] == "Set" then
@@ -150,6 +164,24 @@ local function onServeInvokeServer(...)
 	args[3] = Water.alwaysMaxServePower and 1.0 or args[3]
 
 	return oldNameCall(unpack(args))
+end
+
+local function onDiveMoveDirection(...)
+	if not checkcaller() then
+		return oldIndex(...)
+	end
+
+	return AutoGuard.wantedDiveDirection
+end
+
+local function onIndex(...)
+	local args = { ... }
+	local index = args[2]
+
+	if index == "MoveDirection" and debug.getinfo(3).name == "Dive" then
+		return onDiveMoveDirection(...)
+	end
+	return oldIndex(...)
 end
 
 local function onNameCall(...)
@@ -201,11 +233,12 @@ end
 
 function Water.init()
 	oldNameCall = Hooking.metamethod(game, "__namecall", onNameCall)
+	oldIndex = Hooking.metamethod(game, "__index", onIndex)
 	oldAbilitySpin = Hooking.func(abilityController.Spin, onAbilitySpin)
 	oldStyleSpin = Hooking.func(styleController.Spin, onStyleSpin)
 
 	Gizmos.init()
-
+	BallNetworking.init()
 	AutoGuard.init()
 
 	Logger.warn("Water has initialized. Hello, ServerScriptService.AnticheatService logging :)")
