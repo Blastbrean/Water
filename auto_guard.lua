@@ -41,7 +41,9 @@ local FLOOR_Y_LIMIT = -4.778
 local COURT_TOO_LOW_THRESHOLD = 10.0
 
 local LANDING_SPOT_DISTANCE_THRESHOLD = 12.5
-local SET_TOO_FAR_LIMIT = 20.0
+local ACTION_TOO_FAR_LIMIT = 30.0
+local SUPER_FAST_BALL_THRESHOLD = 75.0
+local TOO_FAR_FROM_HEAD_LIMIT = 5.0
 
 local function isStateValid(state)
 	for _, check in next, state.checks do
@@ -58,12 +60,12 @@ local function determineHitType(context, state)
 	local humanoidRootPart = context.humanoidRootPart
 
 	local distanceToLandingSpot = (landingPosition - humanoidRootPart.Position).Magnitude
+	local ballSpeed = context.ballVelocity.Magnitude
 
-	if distanceToLandingSpot > LANDING_SPOT_DISTANCE_THRESHOLD then
+	if distanceToLandingSpot > LANDING_SPOT_DISTANCE_THRESHOLD and ballSpeed > SUPER_FAST_BALL_THRESHOLD then
 		return "Dive"
 	end
 
-	---@todo: Make this actually set. Because how far the dive is trying to hit from, this will never trigger in practice. Also, it needs better logic to prevent it from setting the air.
 	return "Set"
 end
 
@@ -175,6 +177,8 @@ function AutoGuard.render(context, state)
 
 	local statusSheet = Sheet.new()
 
+	statusSheet:append("Ball speed", string.format("%.2f studs/s", ballVelocity.Magnitude))
+
 	for _, check in next, state.checks do
 		statusSheet:append(check.label, check.value)
 	end
@@ -283,6 +287,12 @@ local function onBallReplication(dataBuffer)
 end
 
 function AutoGuard.update()
+	local savedBallHistory = ballHistory
+	local savedPredictedLandingHistory = predictedLandingHistory
+
+	ballHistory = {}
+	predictedLandingHistory = {}
+
 	local localPlayer = players.LocalPlayer
 	local character = localPlayer.Character
 	if not character then
@@ -333,6 +343,14 @@ function AutoGuard.update()
 	if not firstBallPart then
 		return
 	end
+
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+
+	ballHistory = savedBallHistory
+	predictedLandingHistory = savedPredictedLandingHistory
 
 	local context = {
 		localPlayer = localPlayer,
@@ -393,7 +411,11 @@ function AutoGuard.update()
 			},
 			{
 				label = "Is ball in distance?",
-				value = (context.ballCFrame.Position - humanoidRootPart.Position).Magnitude <= SET_TOO_FAR_LIMIT,
+				value = (context.ballCFrame.Position - humanoidRootPart.Position).Magnitude <= ACTION_TOO_FAR_LIMIT,
+			},
+			{
+				label = "Is ball vertically too far from head?",
+				value = math.abs(context.ballCFrame.Position.Y - head.Position.Y) <= TOO_FAR_FROM_HEAD_LIMIT,
 			},
 		},
 	}
@@ -415,13 +437,13 @@ function AutoGuard.update()
 	if shared.water.autoGuardTeleporting then
 		humanoidRootPart.CFrame = CFrame.new(predictedLandingData.position + Vector3.new(0, 5, 0))
 	end
+
 	if state.hitType == "Set" then
 		gameController:DoMove("Set")
 	end
 
 	if state.hitType == "Dive" then
-		---@todo: Set proper dive target amount
-		gameController:Dive({ Target = (predictedLandingData.position - humanoidRootPart.Position).Unit * 3 })
+		gameController:Dive()
 	end
 end
 

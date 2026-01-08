@@ -51,6 +51,7 @@ end
 local oldNameCall = nil
 local oldAbilitySpin = nil
 local oldStyleSpin = nil
+local oldIndex = nil
 
 local function onGetPartsInPart(...)
 	if not Water.hitFromAnywhere then
@@ -107,7 +108,7 @@ local function onSetInteract(data)
 	local nearestDistance = nil
 
 	for _, part in next, boundaries.GetChildren(boundaries) do
-		if not part:IsA("BasePart") then
+		if not game.IsA(part, "BasePart") then
 			continue
 		end
 
@@ -199,7 +200,7 @@ local function onStyleSpin(...)
 end
 
 function Water.init()
-	oldNameCall = hookmetamethod(game, "__namecall", onNameCall)
+	oldNameCall = Hooking.metamethod(game, "__namecall", onNameCall)
 	oldAbilitySpin = Hooking.func(abilityController.Spin, onAbilitySpin)
 	oldStyleSpin = Hooking.func(styleController.Spin, onStyleSpin)
 
@@ -207,7 +208,7 @@ function Water.init()
 
 	AutoGuard.init()
 
-	Logger.warn("Water has initialized.")
+	Logger.warn("Water has initialized. Hello, ServerScriptService.AnticheatService logging :)")
 end
 
 function Water.detach()

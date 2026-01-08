@@ -7,9 +7,9 @@ local hookingMaid = Maid.new()
 function Hooking.metamethod(object, methodName, func)
 	local old = hookmetamethod(object, methodName, func)
 
-	hookingMaid[#hookingMaid + 1] = function()
+	hookingMaid:add(function()
 		hookmetamethod(object, methodName, old)
-	end
+	end)
 
 	return old
 end
@@ -17,9 +17,9 @@ end
 function Hooking.func(target, func)
 	local old = hookfunction(target, func)
 
-	hookingMaid[#hookingMaid + 1] = function()
+	hookingMaid:add(function()
 		hookfunction(target, old)
-	end
+	end)
 
 	return old
 end
