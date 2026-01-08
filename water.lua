@@ -161,7 +161,8 @@ end
 local function onServeInvokeServer(...)
 	local args = { ... }
 
-	args[3] = Water.alwaysMaxServePower and 1.0 or args[3]
+	---@note: clamped on server anyway
+	args[3] = Water.alwaysMaxServePower and math.huge or args[3]
 
 	return oldNameCall(unpack(args))
 end
