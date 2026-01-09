@@ -436,7 +436,6 @@ function AutoGuard.update()
 	if
 		predictedLandingData
 		and (predictedLandingData.position - humanoidRootPart.Position).Magnitude <= SET_TOO_FAR_LIMIT
-		and (context.ballCFrame.Position - humanoidRootPart.Position).Magnitude <= ACTION_TOO_FAR_LIMIT
 		and context.ballVelocity.Magnitude > EXTREMELY_FAST_BALL_THRESHOLD
 	then
 		state.checks.isBallOnCorrectSide.value = "Skipped (unreliable at high speeds)"
