@@ -41,6 +41,7 @@ local LANDING_SPOT_DISTANCE_THRESHOLD = 12.5
 local ACTION_TOO_FAR_LIMIT = 30.0
 local SUPER_FAST_BALL_THRESHOLD = 75.0
 local TOO_FAR_FROM_HEAD_LIMIT = 5.0
+local SET_TOO_FAR_LIMIT = 20.0
 
 local function isStateValid(state)
 	for _, check in next, state.checks do
@@ -57,9 +58,14 @@ local function determineHitType(context, state)
 	local humanoidRootPart = context.humanoidRootPart
 
 	local distanceToLandingSpot = (landingPosition - humanoidRootPart.Position).Magnitude
+	local distanceToBall = (context.ballCFrame.Position - humanoidRootPart.Position).Magnitude
 	local ballSpeed = context.ballVelocity.Magnitude
 
 	if distanceToLandingSpot > LANDING_SPOT_DISTANCE_THRESHOLD and ballSpeed > SUPER_FAST_BALL_THRESHOLD then
+		return "Dive"
+	end
+
+	if distanceToBall > SET_TOO_FAR_LIMIT then
 		return "Dive"
 	end
 
@@ -416,7 +422,7 @@ function AutoGuard.update()
 				value = (context.ballCFrame.Position - humanoidRootPart.Position).Magnitude <= ACTION_TOO_FAR_LIMIT,
 			},
 			{
-				label = "Is ball vertically too far from head?",
+				label = "Is ball in vertical distance from head?",
 				value = math.abs(context.ballCFrame.Position.Y - head.Position.Y) <= TOO_FAR_FROM_HEAD_LIMIT,
 			},
 		},
