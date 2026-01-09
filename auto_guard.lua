@@ -40,6 +40,7 @@ local COURT_TOO_LOW_THRESHOLD = 10.0
 local LANDING_SPOT_DISTANCE_THRESHOLD = 12.5
 local ACTION_TOO_FAR_LIMIT = 30.0
 local SUPER_FAST_BALL_THRESHOLD = 75.0
+local EXTREMELY_FAST_BALL_THRESHOLD = 100.0
 local TOO_FAR_FROM_HEAD_LIMIT = 5.0
 local SET_TOO_FAR_LIMIT = 20.0
 
@@ -428,11 +429,15 @@ function AutoGuard.update()
 		},
 	}
 
-	-- These checks are reliant on the current ball position and at high velocities, it can be unreliable.
+	---@note: these checks are reliant on the current ball position and at high velocities, it can be unreliable.
+	-- we simply need to give ourselves enough time to run these checks, else we risk not defending properly.
+	-- 1. we are in very close distance.
+	-- 2. the ball is going extremely fast on us.
 	if
 		predictedLandingData
-		and (predictedLandingData.position - humanoidRootPart.Position).Magnitude < SET_TOO_FAR_LIMIT
-		and context.ballVelocity.Magnitude > SUPER_FAST_BALL_THRESHOLD
+		and (predictedLandingData.position - humanoidRootPart.Position).Magnitude <= SET_TOO_FAR_LIMIT
+		and (context.ballCFrame.Position - humanoidRootPart.Position).Magnitude <= ACTION_TOO_FAR_LIMIT
+		and context.ballVelocity.Magnitude > EXTREMELY_FAST_BALL_THRESHOLD
 	then
 		state.checks.isBallOnCorrectSide.value = "Skipped (unreliable at high speeds)"
 		state.checks.isBallInVerticalDistanceFromHead.value = "Skipped (unreliable at high speeds)"
