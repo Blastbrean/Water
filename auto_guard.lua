@@ -413,20 +413,30 @@ function AutoGuard.update()
 				label = "Is last touch valid?",
 				value = context.lastHitTeam and context.lastHitTeam ~= localPlayer.Team.Name,
 			},
-			{
+			isLandingValid = {
 				label = "Is landing valid?",
 				value = predictedLandingData and predictedLandingData.instance.Name == "Court",
 			},
-			{
+			isBallInDistance = {
 				label = "Is ball in distance?",
 				value = (context.ballCFrame.Position - humanoidRootPart.Position).Magnitude <= ACTION_TOO_FAR_LIMIT,
 			},
-			{
+			isBallInVerticalDistanceFromHead = {
 				label = "Is ball in vertical distance from head?",
 				value = math.abs(context.ballCFrame.Position.Y - head.Position.Y) <= TOO_FAR_FROM_HEAD_LIMIT,
 			},
 		},
 	}
+
+	-- These checks are reliant on the current ball position and at high velocities, it can be unreliable.
+	if
+		predictedLandingData
+		and (predictedLandingData.position - humanoidRootPart.Position).Magnitude < SET_TOO_FAR_LIMIT
+		and context.ballVelocity.Magnitude > SUPER_FAST_BALL_THRESHOLD
+	then
+		state.checks.isBallOnCorrectSide.value = "Skipped (unreliable at high speeds)"
+		state.checks.isBallInVerticalDistanceFromHead.value = "Skipped (unreliable at high speeds)"
+	end
 
 	state.isValid = isStateValid(state)
 	state.hitType = determineHitType(context, state)
