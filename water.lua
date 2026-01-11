@@ -20,6 +20,7 @@ local Hooking = require("utility/hooking")
 local Gizmos = require("utility/gizmos")
 local BallNetworking = require("utility/ball_networking")
 
+local UI = require("ui")
 local AutoGuard = require("auto_guard")
 
 local Knit = require(replicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))

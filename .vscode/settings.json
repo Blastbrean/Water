@@ -73,7 +73,8 @@
     ],
     "robloxLsp.suggestedImports.importIgnore": [
         "**/_Index/**",
-        "bundled/"
+        "bundled/",
+        "test/"
     ],
     "robloxLsp.diagnostics.disable": [
         "duplicate-doc-class",
