@@ -66,7 +66,8 @@ local function determineHitType(context, state)
 		return "Dive"
 	end
 
-	if distanceToBall > SET_TOO_FAR_LIMIT then
+	---@note: add some leniency here because of ping lol
+	if distanceToBall > (SET_TOO_FAR_LIMIT - 2.0) then
 		return "Dive"
 	end
 
