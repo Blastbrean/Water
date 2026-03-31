@@ -4,6 +4,7 @@ local players = game:GetService("Players")
 local collectionService = game:GetService("CollectionService")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local runService = game:GetService("RunService")
+local replicatedFirst = game:GetService("ReplicatedFirst")
 
 local Maid = require("utility/maid")
 local Gizmos = require("utility/gizmos")
@@ -15,6 +16,15 @@ local GameMode = require(replicatedStorage:WaitForChild("Configuration"):WaitFor
 local Game = require(replicatedStorage:WaitForChild("Configuration"):WaitForChild("Game"))
 local Physics = require(replicatedStorage:WaitForChild("Common"):WaitForChild("Physics"))
 local Knit = require(replicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))
+local DoMoveRegistry = require(
+	replicatedFirst
+		:WaitForChild("Controllers")
+		:WaitForChild("GameController")
+		:WaitForChild("Actions")
+		:WaitForChild("Binding")
+		:WaitForChild("Registry")
+		:WaitForChild("DoMove")
+)
 
 local gameController = nil
 
@@ -465,10 +475,13 @@ function AutoGuard.update()
 	AutoGuard.wantedDiveDirection = (predictedLandingData.position - humanoidRootPart.Position).Unit
 
 	if state.hitType == "Set" then
-		local success, reason = gameController:DoMove("Set"):await()
-		if not success then
-			return Logger.warn("Failed to perform AutoGuard 'set' action due to:\n'%s'", reason)
-		end
+		---@note: had to get rid of old GameController coz :DoMove was erroring
+		DoMoveRegistry.onMoveRequest({
+			["ActionName"] = "Set",
+			["IsAerial"] = gameController.IsJumping:get(),
+			["InputState"] = Enum.UserInputState.Begin,
+			["Metadata"] = {},
+		})
 	end
 
 	if state.hitType == "Dive" then
