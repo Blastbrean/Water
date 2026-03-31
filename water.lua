@@ -179,9 +179,10 @@ local function onIndex(...)
 	local args = { ... }
 	local index = args[2]
 
-	if index == "MoveDirection" and debug.getinfo(3).name == "Dive" then
+	if index == "MoveDirection" and debug.getinfo(3).short_src:match("Dive") then
 		return onDiveMoveDirection(...)
 	end
+
 	return oldIndex(...)
 end
 

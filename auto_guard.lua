@@ -464,7 +464,7 @@ function AutoGuard.update()
 	AutoGuard.wantedDiveDirection = (predictedLandingData.position - humanoidRootPart.Position).Unit
 
 	if state.hitType == "Set" then
-		gameController:DoMove("Set")
+		gameController:DoMove("Set"):await()
 	end
 
 	if state.hitType == "Dive" then
