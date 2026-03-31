@@ -9,6 +9,7 @@ local Maid = require("utility/maid")
 local Gizmos = require("utility/gizmos")
 local Sheet = require("utility/sheet")
 local BallNetworking = require("utility/ball_networking")
+local Logger = require("utility/logger")
 
 local GameMode = require(replicatedStorage:WaitForChild("Configuration"):WaitForChild("Gamemode"))
 local Game = require(replicatedStorage:WaitForChild("Configuration"):WaitForChild("Game"))
@@ -464,7 +465,10 @@ function AutoGuard.update()
 	AutoGuard.wantedDiveDirection = (predictedLandingData.position - humanoidRootPart.Position).Unit
 
 	if state.hitType == "Set" then
-		gameController:DoMove("Set"):await()
+		local success, reason = gameController:DoMove("Set"):await()
+		if not success then
+			return Logger.warn("Failed to perform AutoGuard 'set' action due to:\n'%s'", reason)
+		end
 	end
 
 	if state.hitType == "Dive" then
